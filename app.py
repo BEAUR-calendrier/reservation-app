@@ -16,7 +16,7 @@ USERS = [
 MATERIEL = [
     "Station S3", "Station S6", "Station S8", "GPS R10-4", "GPS R10-5", "GPS R10-6",
     "GPS-EMLID", "Scanner Statique", "Scanner dynamique ORBIS", "Drone M3",
-    "Drone M300", "Berlingo", "Kangoo", "E-Partner", "208 Philippe", "208 Simone"
+    "Drone M300", "Berlingo", "Kangoo", "E-Partner", "208 Philippe", "208 Simone", "PYX",
 ]
 
 # Fichier de données
