@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Réservation de matériel</title>
+    <link href="{{ url_for('static', filename='fullcalendar/main.min.css') }}" rel="stylesheet">
+    <script src="{{ url_for('static', filename='fullcalendar/main.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='fullcalendar/locales/fr.js') }}"></script>
+    <style>
+        body {
+            font-family: "Segoe UI", sans-serif;
+            margin: 30px;
+            background-color: #f4f4f4;
+        }
+
+        h1, h2 {
+            color: #333;
+        }
+
+        form {
+            background-color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        input, select, button {
+            padding: 10px;
+            font-size: 1em;
+            margin: 8px 0;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        #calendar {
+            background-color: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+
+        .fc-timegrid-slot {
+            font-size: 0.85em;
+        }
+
+        .fc-timegrid-slot-label[data-time$="08:00:00"],
+        .fc-timegrid-slot-label[data-time$="09:00:00"],
+        .fc-timegrid-slot-label[data-time$="10:00:00"],
+        .fc-timegrid-slot-label[data-time$="11:00:00"],
+        .fc-timegrid-slot-label[data-time$="12:00:00"],
+        .fc-timegrid-slot-label[data-time$="13:00:00"],
+        .fc-timegrid-slot-label[data-time$="14:00:00"],
+        .fc-timegrid-slot-label[data-time$="15:00:00"],
+        .fc-timegrid-slot-label[data-time$="16:00:00"],
+        .fc-timegrid-slot-label[data-time$="17:00:00"],
+        .fc-timegrid-slot-label[data-time$="18:00:00"] {
+            font-weight: bold;
+            font-size: 1em;
+        }
+
+        .fc-timegrid-slot-label {
+            opacity: 0.5;
+        }
+    </style>
+
+    <script>
+        async function updateAvailable() {
+            const start = document.getElementById('start').value;
+            const end = document.getElementById('end').value;
+            if (start && end) {
+                const res = await fetch('/available', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({start, end})
+                });
+                const data = await res.json();
+                const list = document.getElementById('itemList');
+                list.innerHTML = '';
+                if (data.length > 0) {
+                    data.forEach(item => {
+                        const label = document.createElement('label');
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.name = 'items';
+                        checkbox.value = item;
+                        label.appendChild(checkbox);
+                        label.appendChild(document.createTextNode(' ' + item));
+                        list.appendChild(label);
+                    });
+                } else {
+                    list.innerHTML = "Aucun matériel disponible pour cette période.";
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            let calendarEl = document.getElementById('calendar');
+            let calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'timeGridWeek',
+                allDaySlot: false,
+                slotMinTime: "06:00:00",
+                slotMaxTime: "22:00:00",
+                businessHours: {
+                    daysOfWeek: [1, 2, 3, 4, 5],
+                    startTime: '08:00',
+                    endTime: '18:00'
+                },
+                hiddenDays: [0, 6],
+                locale: 'fr',
+                firstDay: 1,
+                events: '/events',
+                height: 'auto',
+                eventDidMount: function(info) {
+                    info.el.setAttribute('title', info.event.title);
+                },
+
+                // Gestion du clic sur un événement
+                eventClick: function(info) {
+                    const event = info.event;
+                    const id = event.id;
+                    const title = event.title;
+                    const start = event.start.toISOString().slice(0,16);
+                    const end = event.end.toISOString().slice(0,16);
+
+                    // Demande à l'utilisateur de modifier le nom ou de supprimer
+                    const newTitle = prompt("Modifier le nom ou cliquez sur Annuler pour supprimer :", title);
+
+                    if (newTitle === null) {
+                        // Si l'utilisateur clique sur Annuler, demande la confirmation de suppression
+                        if (confirm("Supprimer cette réservation ?")) {
+                            // Appel pour supprimer l'événement
+                            fetch('/delete', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: id })
+                            }).then(() => location.reload());
+                        }
+                    } else if (newTitle !== title) {
+                        // Si le nom a été modifié, on met à jour l'événement
+                        fetch('/update', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                id: id,
+                                title: newTitle,
+                                start: start,
+                                end: end
+                            })
+                        }).then(() => location.reload());
+                    }
+                }
+            });
+
+            calendar.render();
+        });
+    </script>
+</head>
+<body>
+    <h1>Réserver du matériel</h1>
+    <form action="/reserve" method="post">
+        <label for="name">Nom :</label>
+        <select name="name" id="name-select" onchange="document.getElementById('name').value=this.value">
+            <option value="">-- Sélectionner un nom --</option>
+            <option>Emmanuelle</option>
+            <option>Eric</option>
+            <option>Bastien</option>
+            <option>Junior</option>
+            <option>Baptiste</option>
+            <option>Jules</option>
+            <option>Christopher</option>
+            <option>Guillaume</option>
+            <option>Léo</option>
+            <option>Charles</option>
+            <option>Mathis</option>
+        </select>
+        <input type="text" id="name" name="name" placeholder="Ou écrivez un nom..." required><br><br>
+
+        <label>Date de début :</label>
+        <input type="datetime-local" id="start" name="start" required onchange="updateAvailable()"><br>
+
+        <label>Date de fin :</label>
+        <input type="datetime-local" id="end" name="end" required onchange="updateAvailable()"><br>
+
+        <label>Matériel disponible :</label>
+        <div id="itemList">Choisissez une date pour voir les disponibilités</div><br>
+
+        <button type="submit">Réserver</button>
+    </form>
+
+    <h2>Planning des réservations</h2>
+    <div id="calendar"></div>
+</body>
+</html>
